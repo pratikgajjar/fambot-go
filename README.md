@@ -1,0 +1,2 @@
+# fambot-go
+Sassy slackbot
