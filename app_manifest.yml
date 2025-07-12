@@ -1,6 +1,6 @@
 display_information:
   name: FamBot
-  description: I keep track of karma
+  description: I keep track of karma, dharma
   background_color: "#009ac4"
 features:
   bot_user:
@@ -34,23 +34,24 @@ oauth_config:
       - channels:history
       - reactions:read
     bot:
-      - channels:join
-      - commands
-      - dnd:read
-      - reactions:read
-      - reactions:write
-      - users:read
       - app_mentions:read
       - channels:history
+      - channels:join
       - channels:read
       - chat:write
+      - commands
+      - dnd:read
       - groups:history
       - groups:read
       - im:history
       - im:read
       - mpim:history
       - mpim:read
+      - reactions:read
+      - reactions:write
+      - users:read
       - users:read.email
+      - chat:write.public
 settings:
   event_subscriptions:
     user_events:

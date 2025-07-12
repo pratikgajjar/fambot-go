@@ -4,12 +4,15 @@ A sassy Slack bot built in Go that brings good vibes to your workspace! FamBot h
 
 ## ✨ Features
 
-1. **Karma System** - When a user types `@username++` we increment their karma score
-2. **Polite Rewards** - When users mention "thank you" to the bot, get a sassy response and karma
-3. **Persistent Storage** - Keep track of user's karma scores using SQLite database
-4. **Leaderboard** - Display the top 10 users with the highest karma scores
-5. **Birthday Reminders** - Remember everyone's birthdays and send messages to #people channel
-6. **Anniversary Tracking** - Remember work anniversaries and celebrate team milestones
+1. **Karma System** - When a user types `@username++` we increment their karma score with threaded responses
+2. **Cross-Channel Support** - Bot listens and responds in all public channels, not just #people
+3. **Threaded Responses** - All karma and thank you responses appear in message threads for better organization
+4. **Grateful Channel Integration** - Track thank you messages in a dedicated channel with clickable thread links
+5. **Polite Rewards** - When users mention "thank you", get a sassy response and karma
+6. **Persistent Storage** - Keep track of user's karma scores using SQLite database
+7. **Leaderboard** - Display the top 10 users with the highest karma scores
+8. **Birthday Reminders** - Remember everyone's birthdays and send messages to #people channel
+9. **Anniversary Tracking** - Remember work anniversaries and celebrate team milestones
 
 ## 🚀 Quick Start
 
@@ -121,6 +124,7 @@ SLACK_BOT_TOKEN=xoxb-your-bot-token-here
 SLACK_APP_TOKEN=xapp-your-app-level-token-here
 DATABASE_PATH=fambot.db
 PEOPLE_CHANNEL=people
+GRATEFUL_CHANNEL=thankyou
 DEBUG=false
 ```
 
@@ -128,19 +132,24 @@ DEBUG=false
 
 ### Karma System
 
-**Give karma to someone:**
+**Give karma to someone (works in any public channel):**
 
 ```
 @username++ Great job on that presentation!
 @alice++ Thanks for helping with the bug fix
 ```
 
-**Thank the bot (and get karma):**
+_Bot responds in thread:_ "Karma level up! @username now has 15 karma points! 📈✨"
+
+**Thank anyone (and get karma):**
 
 ```
-@fambot thank you for the reminder!
-Thanks @fambot for keeping track of everything
+Thank you @alice for the help!
+Thanks everyone for the great meeting!
+@bob thank you so much!
 ```
+
+_Bot responds in thread and posts to grateful channel with thread link_
 
 **Check karma leaderboard:**
 
@@ -212,7 +221,7 @@ fambot-go/
 
 ## 🎭 Sassy Responses
 
-FamBot comes with built-in sassy responses that make interactions more fun:
+FamBot comes with built-in sassy responses that make interactions more fun. All responses now appear in message threads to keep channels organized:
 
 **Thank you responses:**
 
@@ -225,6 +234,22 @@ FamBot comes with built-in sassy responses that make interactions more fun:
 - "Karma delivered with a side of sass! You're welcome. 💅"
 - "Another karma point hits the bank! Keep spreading those good vibes. 🏦"
 - "Ding! Karma deposited. Your account is looking mighty fine! 💰"
+
+## 📝 Grateful Channel Integration
+
+When someone receives karma or thanks, FamBot automatically posts a summary to the configured grateful channel:
+
+```
+📝 @username received thanks! Check it out: [clickable thread link]
+```
+
+This feature helps teams:
+
+- Track positive interactions across all channels
+- Celebrate team members in a centralized location
+- Build a culture of appreciation and recognition
+
+Configure with the `GRATEFUL_CHANNEL` environment variable (defaults to "thankyou").
 
 ## 🕒 Automated Reminders
 

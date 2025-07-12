@@ -24,24 +24,32 @@ var (
 
 // SlackHandler handles all Slack-related events and interactions
 type SlackHandler struct {
-	client        *slack.Client
-	db            *database.Database
-	botID         string
-	peopleChannel string
+	client          *slack.Client
+	db              *database.Database
+	botID           string
+	peopleChannel   string
+	gratefulChannel string
+	workspaceID     string
 }
 
 // New creates a new SlackHandler
-func New(client *slack.Client, db *database.Database, peopleChannel string) *SlackHandler {
+func New(client *slack.Client, db *database.Database, peopleChannel, gratefulChannel string) *SlackHandler {
 	return &SlackHandler{
-		client:        client,
-		db:            db,
-		peopleChannel: peopleChannel,
+		client:          client,
+		db:              db,
+		peopleChannel:   peopleChannel,
+		gratefulChannel: gratefulChannel,
 	}
 }
 
 // SetBotID sets the bot's user ID
 func (h *SlackHandler) SetBotID(botID string) {
 	h.botID = botID
+}
+
+// SetWorkspaceID sets the workspace ID for thread link generation
+func (h *SlackHandler) SetWorkspaceID(workspaceID string) {
+	h.workspaceID = workspaceID
 }
 
 // HandleSocketModeEvent handles incoming socket mode events
@@ -146,13 +154,13 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 
 		// Don't allow self-karma
 		if targetUserID == event.User {
-			h.sendMessage(event.Channel, "Nice try! You can't give karma to yourself. That's cheating! 🚫")
+			h.sendThreadedMessage(event.Channel, event.TimeStamp, "Nice try! You can't give karma to yourself. That's cheating! 🚫")
 			continue
 		}
 
 		// Don't allow karma to the bot
 		if targetUserID == h.botID {
-			h.sendMessage(event.Channel, "Aww, trying to give me karma? I'm touched, but I'm already perfect! 😎")
+			h.sendThreadedMessage(event.Channel, event.TimeStamp, "Aww, trying to give me karma? I'm touched, but I'm already perfect! 😎")
 			continue
 		}
 
@@ -177,7 +185,7 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 		err = h.db.IncrementKarma(targetUserID, userInfo.Name, event.User, reason, event.Channel)
 		if err != nil {
 			log.Printf("Error incrementing karma: %v", err)
-			h.sendMessage(event.Channel, "Oops! Something went wrong with the karma system. 🤖💥")
+			h.sendThreadedMessage(event.Channel, event.TimeStamp, "Oops! Something went wrong with the karma system. 🤖💥")
 			continue
 		}
 
@@ -187,7 +195,7 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 			log.Printf("Error getting karma: %v", err)
 		}
 
-		// Send sassy response
+		// Send sassy response in thread
 		var response string
 		if karma != nil {
 			response = fmt.Sprintf("Karma level up! <@%s> now has %d karma points! 📈✨", targetUserID, karma.Score)
@@ -201,23 +209,21 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 			response += "\n" + sassyResponse.Response
 		}
 
-		h.sendMessage(event.Channel, response)
+		h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
+
+		// Post to grateful channel with thread link
+		h.postToGratefulChannel(userInfo.Name, event.Channel, event.TimeStamp)
 	}
 }
 
 // handleThankYou processes thank you mentions
 func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
-	// Check if the message contains "thank you" and mentions the bot
+	// Check if the message contains "thank you"
 	if !thankYouRegex.MatchString(event.Text) {
 		return
 	}
 
-	// Check if bot is mentioned in the message
-	if !strings.Contains(event.Text, fmt.Sprintf("<@%s>", h.botID)) {
-		return
-	}
-
-	// Get user info
+	// Get user info for the person saying thanks
 	userInfo, err := h.client.GetUserInfo(event.User)
 	if err != nil {
 		log.Printf("Error getting user info for %s: %v", event.User, err)
@@ -233,23 +239,52 @@ func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
 	}
 	h.db.UpsertUser(user)
 
+	// Check if someone specific is being thanked (has user mentions)
+	var targetUsername string
+	userMentionRegex := regexp.MustCompile(`<@([A-Z0-9]+)>`)
+	mentions := userMentionRegex.FindAllStringSubmatch(event.Text, -1)
+
+	// If there are user mentions, find who is being thanked
+	for _, match := range mentions {
+		if len(match) >= 2 {
+			mentionedUserID := match[1]
+			if mentionedUserID != h.botID && mentionedUserID != event.User {
+				// Someone is thanking another user
+				mentionedUser, err := h.client.GetUserInfo(mentionedUserID)
+				if err == nil {
+					targetUsername = mentionedUser.Name
+					break
+				}
+			}
+		}
+	}
+
 	// Give karma for being polite
-	reason := fmt.Sprintf("Thanked the bot in #%s", getChannelName(event.Channel))
+	reason := fmt.Sprintf("Said thank you in #%s", getChannelName(event.Channel))
 	err = h.db.IncrementKarma(event.User, userInfo.Name, h.botID, reason, event.Channel)
 	if err != nil {
 		log.Printf("Error incrementing karma for thank you: %v", err)
 	}
 
-	// Send sassy thank you response
+	// Send sassy thank you response in thread
 	sassyResponse, err := h.db.GetRandomSassyResponse("thank_you")
+	var response string
 	if err != nil {
 		// Fallback response
-		h.sendMessage(event.Channel, fmt.Sprintf("You're welcome, <@%s>! Politeness rewarded with karma! ✨", event.User))
-		return
+		response = fmt.Sprintf("Politeness detected! <@%s> gets karma for good manners! ✨", event.User)
+	} else {
+		response = fmt.Sprintf("<@%s> %s", event.User, sassyResponse.Response)
 	}
 
-	response := fmt.Sprintf("<@%s> %s", event.User, sassyResponse.Response)
-	h.sendMessage(event.Channel, response)
+	h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
+
+	// Post to grateful channel with thread link
+	// Use the target username if someone specific was thanked, otherwise use the thanker's name
+	gratefulUser := targetUsername
+	if gratefulUser == "" {
+		gratefulUser = userInfo.Name
+	}
+	h.postToGratefulChannel(gratefulUser, event.Channel, event.TimeStamp)
 }
 
 // handleSlashCommand handles slash commands
@@ -500,6 +535,75 @@ func (h *SlackHandler) sendMessage(channel, text string) {
 	if err != nil {
 		log.Printf("Error sending message: %v", err)
 	}
+}
+
+// sendThreadedMessage sends a message as a reply in a thread
+func (h *SlackHandler) sendThreadedMessage(channel, threadTS, text string) {
+	_, _, err := h.client.PostMessage(channel,
+		slack.MsgOptionText(text, false),
+		slack.MsgOptionTS(threadTS))
+	if err != nil {
+		log.Printf("Error sending threaded message: %v", err)
+	}
+}
+
+// postToGratefulChannel posts a thread link to the grateful channel
+func (h *SlackHandler) postToGratefulChannel(username, originalChannel, threadTS string) {
+	// Skip if grateful channel is not configured
+	if h.gratefulChannel == "" {
+		return
+	}
+
+	// Get grateful channel ID by name
+	gratefulChannelID, err := h.getChannelIDByName(h.gratefulChannel)
+	if err != nil {
+		log.Printf("Error getting grateful channel ID: %v", err)
+		return
+	}
+
+	// Build the thread link using proper workspace ID
+	var threadLink string
+	if h.workspaceID != "" {
+		threadLink = fmt.Sprintf("https://app.slack.com/client/%s/%s/thread/%s-%s", h.workspaceID, originalChannel, originalChannel, threadTS)
+	} else {
+		// Fallback to simple format if workspace ID not available
+		threadLink = fmt.Sprintf("Thread in <#%s>", originalChannel)
+	}
+
+	// Format the message
+	message := fmt.Sprintf("📝 @%s received thanks! Check it out: %s", username, threadLink)
+
+	// Send to grateful channel
+	h.sendMessage(gratefulChannelID, message)
+}
+
+// getChannelIDByName resolves a channel name to its ID
+func (h *SlackHandler) getChannelIDByName(channelName string) (string, error) {
+	// If it's already a channel ID (starts with C), return as-is
+	if strings.HasPrefix(channelName, "C") {
+		return channelName, nil
+	}
+
+	// Remove # prefix if present
+	channelName = strings.TrimPrefix(channelName, "#")
+
+	// Get list of channels
+	channels, _, err := h.client.GetConversationsForUser(&slack.GetConversationsForUserParameters{
+		Types: []string{"public_channel"},
+		Limit: 1000,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get channels: %w", err)
+	}
+
+	// Find channel by name
+	for _, channel := range channels {
+		if channel.Name == channelName {
+			return channel.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("channel #%s not found", channelName)
 }
 
 func (h *SlackHandler) sendTopKarma(channel string) {

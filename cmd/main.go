@@ -61,8 +61,9 @@ func main() {
 	log.Printf("Bot authenticated as %s (%s)", authTest.User, authTest.UserID)
 
 	// Initialize handlers
-	handler := handlers.New(client, db, cfg.PeopleChannel)
+	handler := handlers.New(client, db, cfg.PeopleChannel, cfg.GratefulChannel)
 	handler.SetBotID(authTest.UserID)
+	handler.SetWorkspaceID(authTest.TeamID)
 
 	// Set up socket mode event handler
 	go func() {
