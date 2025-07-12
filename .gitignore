@@ -11,5 +11,91 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# Build artifacts
+bin/
+build/
+dist/
+
+# Database files
+*.db
+*.db-journal
+*.db.backup
+fambot.db*
+
+# Environment files (keep .env.example)
+.env
+.env.local
+.env.*.local
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+
+# Air hot reload
+.air.toml.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Data directories
+data/
+storage/
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage reports
+coverage.txt
+coverage.html
+coverage.out
+
+# Backup files
+*.backup
+*.bak
+*.old
+
+# Lock files (uncomment if you want to ignore them)
+# go.sum
+
+# Certificate files
+*.pem
+*.key
+*.crt
+*.cert
+
+# Local configuration overrides
+config.local.*
+.env.override

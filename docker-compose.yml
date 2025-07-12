@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  fambot:
+    build: .
+    container_name: fambot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_PATH=/app/data/fambot.db
+    volumes:
+      - fambot_data:/app/data
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "pgrep", "fambot"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - fambot_network
+
+  # Optional: Database management interface
+  # Uncomment if you want a web interface to view the SQLite database
+  # adminer:
+  #   image: adminer:latest
+  #   container_name: fambot_adminer
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - ADMINER_DEFAULT_SERVER=sqlite:///data/fambot.db
+  #   volumes:
+  #     - fambot_data:/data
+  #   networks:
+  #     - fambot_network
+  #   depends_on:
+  #     - fambot
+
+  # Optional: Log viewer
+  # Uncomment if you want a web interface to view logs
+  # logs:
+  #   image: goharbor/harbor-log:latest
+  #   container_name: fambot_logs
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8081:8080"
+  #   volumes:
+  #     - ./logs:/logs:ro
+  #   networks:
+  #     - fambot_network
+
+volumes:
+  fambot_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data
+
+networks:
+  fambot_network:
+    driver: bridge
+
+# Development override
+# Create docker-compose.override.yml for development-specific settings
+# Example override content:
+# version: '3.8'
+# services:
+#   fambot:
+#     build:
+#       target: builder
+#     volumes:
+#       - .:/app
+#       - /app/tmp
+#     environment:
+#       - DEBUG=true
+#     command: air
