@@ -47,6 +47,10 @@ func (h *SlackHandler) SetBotID(botID string) {
 // HandleSocketModeEvent handles incoming socket mode events
 func (h *SlackHandler) HandleSocketModeEvent(evt socketmode.Event, client *socketmode.Client) {
 	switch evt.Type {
+	case socketmode.EventTypeConnecting:
+		log.Println("Connecting to Slack...")
+	case socketmode.EventTypeConnected:
+		log.Println("Connected to Slack!")
 	case socketmode.EventTypeEventsAPI:
 		eventsAPIEvent, ok := evt.Data.(slackevents.EventsAPIEvent)
 		if !ok {

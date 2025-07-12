@@ -31,8 +31,16 @@ func main() {
 	defer db.Close()
 
 	// Initialize Slack client
-	client := slack.New(cfg.SlackBotToken, slack.OptionDebug(cfg.Debug))
-	socketClient := socketmode.New(client, socketmode.OptionDebug(cfg.Debug))
+	client := slack.New(
+		cfg.SlackBotToken,
+		slack.OptionDebug(cfg.Debug),
+		slack.OptionLog(log.New(os.Stdout, "api: ", log.LstdFlags|log.Lshortfile)),
+	)
+	socketClient := socketmode.New(
+		client,
+		socketmode.OptionDebug(cfg.Debug),
+		socketmode.OptionLog(log.New(os.Stdout, "socketmode: ", log.LstdFlags|log.Lshortfile)),
+	)
 
 	// Get bot user info
 	authTest, err := client.AuthTest()
