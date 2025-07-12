@@ -511,7 +511,7 @@ func (h *SlackHandler) SendBirthdayReminder() {
 
 	for _, birthday := range birthdays {
 		var message string
-		if birthday.Year > 0 {
+		if birthday.Year > 1970 {
 			age := time.Now().Year() - birthday.Year
 			message = fmt.Sprintf("🎂 Happy Birthday <@%s>! 🎉\nAnother year older, another year wiser! Hope your %d%s year is absolutely amazing! 🎊✨",
 				birthday.UserID, age, getOrdinalSuffix(age))

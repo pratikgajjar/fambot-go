@@ -21,7 +21,7 @@ features:
       should_escape: true
     - command: /set-birthday
       description: set your birthday
-      usage_hint: MM/DD
+      usage_hint: MM/DD or MM/DD/YYYY
       should_escape: false
     - command: /set-anniversary
       description: set work anniversary
