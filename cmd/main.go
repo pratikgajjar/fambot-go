@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/robfig/cron/v3"
@@ -30,11 +31,21 @@ func main() {
 	}
 	defer db.Close()
 
+	// Validate tokens before proceeding
+	if !strings.HasPrefix(cfg.SlackBotToken, "xoxb-") {
+		log.Fatalf("SLACK_BOT_TOKEN should start with 'xoxb-', got: %s", cfg.SlackBotToken[:10]+"...")
+	}
+	if !strings.HasPrefix(cfg.SlackAppToken, "xapp-") {
+		log.Fatalf("SLACK_APP_TOKEN should start with 'xapp-', got: %s", cfg.SlackAppToken[:10]+"...")
+	}
+	log.Printf("Token validation passed")
+
 	// Initialize Slack client
 	client := slack.New(
 		cfg.SlackBotToken,
 		slack.OptionDebug(cfg.Debug),
 		slack.OptionLog(log.New(os.Stdout, "api: ", log.LstdFlags|log.Lshortfile)),
+		slack.OptionAppLevelToken(cfg.SlackAppToken),
 	)
 	socketClient := socketmode.New(
 		client,
