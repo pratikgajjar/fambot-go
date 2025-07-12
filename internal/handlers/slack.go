@@ -212,7 +212,7 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 		h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
 
 		// Post to grateful channel with thread link
-		h.postToGratefulChannel(userInfo.Name, event.Channel, event.TimeStamp)
+		h.postToGratefulChannel(targetUserID, event.Channel, event.TimeStamp)
 	}
 }
 
@@ -279,12 +279,24 @@ func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
 	h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
 
 	// Post to grateful channel with thread link
-	// Use the target username if someone specific was thanked, otherwise use the thanker's name
-	gratefulUser := targetUsername
-	if gratefulUser == "" {
-		gratefulUser = userInfo.Name
+	// Use the target user ID if someone specific was thanked, otherwise use the thanker's ID
+	gratefulUserID := ""
+	if targetUsername != "" {
+		// Find the user ID for the mentioned user
+		for _, match := range mentions {
+			if len(match) >= 2 {
+				mentionedUserID := match[1]
+				if mentionedUserID != h.botID && mentionedUserID != event.User {
+					gratefulUserID = mentionedUserID
+					break
+				}
+			}
+		}
 	}
-	h.postToGratefulChannel(gratefulUser, event.Channel, event.TimeStamp)
+	if gratefulUserID == "" {
+		gratefulUserID = event.User
+	}
+	h.postToGratefulChannel(gratefulUserID, event.Channel, event.TimeStamp)
 }
 
 // handleSlashCommand handles slash commands
@@ -548,7 +560,7 @@ func (h *SlackHandler) sendThreadedMessage(channel, threadTS, text string) {
 }
 
 // postToGratefulChannel posts a thread link to the grateful channel
-func (h *SlackHandler) postToGratefulChannel(username, originalChannel, threadTS string) {
+func (h *SlackHandler) postToGratefulChannel(userID, originalChannel, threadTS string) {
 	// Skip if grateful channel is not configured
 	if h.gratefulChannel == "" {
 		return
@@ -561,17 +573,11 @@ func (h *SlackHandler) postToGratefulChannel(username, originalChannel, threadTS
 		return
 	}
 
-	// Build the thread link using proper workspace ID
-	var threadLink string
-	if h.workspaceID != "" {
-		threadLink = fmt.Sprintf("https://app.slack.com/client/%s/%s/thread/%s-%s", h.workspaceID, originalChannel, originalChannel, threadTS)
-	} else {
-		// Fallback to simple format if workspace ID not available
-		threadLink = fmt.Sprintf("Thread in <#%s>", originalChannel)
-	}
+	// Build the thread link using Slack's permalink format
+	threadLink := fmt.Sprintf("https://slack.com/archives/%s/p%s", originalChannel, strings.Replace(threadTS, ".", "", 1))
 
-	// Format the message
-	message := fmt.Sprintf("📝 @%s received thanks! Check it out: %s", username, threadLink)
+	// Format the message with proper user tagging and Slack hyperlink format
+	message := fmt.Sprintf("<@%s> received <%s|thanks>!", userID, threadLink)
 
 	// Send to grateful channel
 	h.sendMessage(gratefulChannelID, message)

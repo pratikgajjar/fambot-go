@@ -240,7 +240,7 @@ FamBot comes with built-in sassy responses that make interactions more fun. All 
 When someone receives karma or thanks, FamBot automatically posts a summary to the configured grateful channel:
 
 ```
-📝 @username received thanks! Check it out: [clickable thread link]
+📝 @username received thanks! Check it out: <thread_link|thanks>
 ```
 
 This feature helps teams:
