@@ -278,11 +278,10 @@ func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
 
 	h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
 
-	// Post to grateful channel with thread link
-	// Use the target user ID if someone specific was thanked, otherwise use the thanker's ID
-	gratefulUserID := ""
+	// Post to grateful channel with thread link only if someone specific was thanked
 	if targetUsername != "" {
 		// Find the user ID for the mentioned user
+		gratefulUserID := ""
 		for _, match := range mentions {
 			if len(match) >= 2 {
 				mentionedUserID := match[1]
@@ -292,11 +291,10 @@ func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
 				}
 			}
 		}
+		if gratefulUserID != "" {
+			h.postToGratefulChannel(gratefulUserID, event.Channel, event.TimeStamp)
+		}
 	}
-	if gratefulUserID == "" {
-		gratefulUserID = event.User
-	}
-	h.postToGratefulChannel(gratefulUserID, event.Channel, event.TimeStamp)
 }
 
 // handleSlashCommand handles slash commands
