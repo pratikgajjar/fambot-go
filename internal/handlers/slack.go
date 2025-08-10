@@ -144,6 +144,7 @@ func (h *SlackHandler) handleAppMention(event *slackevents.AppMentionEvent) {
 // handleKarmaIncrements processes karma increment patterns
 func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 	matches := karmaRegex.FindAllStringSubmatch(event.Text, -1)
+	var karmaRecipients []string
 
 	for _, match := range matches {
 		if len(match) < 2 {
@@ -211,15 +212,25 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 
 		h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
 
-		// Post to grateful channel with thread link
-		h.postToGratefulChannel(targetUserID, event.Channel, event.TimeStamp)
+		// Collect user for grateful channel post
+		karmaRecipients = append(karmaRecipients, targetUserID)
+	}
+
+	// Post to grateful channel once for all karma recipients
+	if len(karmaRecipients) > 0 {
+		h.postToGratefulChannelMultiple(karmaRecipients, event.Channel, event.TimeStamp)
 	}
 }
 
 // handleThankYou processes thank you mentions
 func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
-	// Check if the message contains "thank you"
+	// Check if the message contains "thank you" but NOT karma (++)
 	if !thankYouRegex.MatchString(event.Text) {
+		return
+	}
+
+	// Skip if the message already contains karma syntax
+	if karmaRegex.MatchString(event.Text) {
 		return
 	}
 
@@ -239,62 +250,17 @@ func (h *SlackHandler) handleThankYou(event *slackevents.MessageEvent) {
 	}
 	h.db.UpsertUser(user)
 
-	// Check if someone specific is being thanked (has user mentions)
-	var targetUsername string
-	userMentionRegex := regexp.MustCompile(`<@([A-Z0-9]+)>`)
-	mentions := userMentionRegex.FindAllStringSubmatch(event.Text, -1)
-
-	// If there are user mentions, find who is being thanked
-	for _, match := range mentions {
-		if len(match) >= 2 {
-			mentionedUserID := match[1]
-			if mentionedUserID != h.botID && mentionedUserID != event.User {
-				// Someone is thanking another user
-				mentionedUser, err := h.client.GetUserInfo(mentionedUserID)
-				if err == nil {
-					targetUsername = mentionedUser.Name
-					break
-				}
-			}
-		}
-	}
-
-	// Give karma for being polite
-	reason := fmt.Sprintf("Said thank you in #%s", getChannelName(event.Channel))
-	err = h.db.IncrementKarma(event.User, userInfo.Name, h.botID, reason, event.Channel)
-	if err != nil {
-		log.Printf("Error incrementing karma for thank you: %v", err)
-	}
-
-	// Send sassy thank you response in thread
-	sassyResponse, err := h.db.GetRandomSassyResponse("thank_you")
+	// Send sassy response suggesting they give karma instead
+	sassyResponse, err := h.db.GetRandomSassyResponse("thank_you_no_karma")
 	var response string
 	if err != nil {
 		// Fallback response
-		response = fmt.Sprintf("Politeness detected! <@%s> gets karma for good manners! ✨", event.User)
+		response = fmt.Sprintf("<@%s> That's nice, but how about showing some love with karma instead? Add ++ after someone's name! 😏", event.User)
 	} else {
 		response = fmt.Sprintf("<@%s> %s", event.User, sassyResponse.Response)
 	}
 
 	h.sendThreadedMessage(event.Channel, event.TimeStamp, response)
-
-	// Post to grateful channel with thread link only if someone specific was thanked
-	if targetUsername != "" {
-		// Find the user ID for the mentioned user
-		gratefulUserID := ""
-		for _, match := range mentions {
-			if len(match) >= 2 {
-				mentionedUserID := match[1]
-				if mentionedUserID != h.botID && mentionedUserID != event.User {
-					gratefulUserID = mentionedUserID
-					break
-				}
-			}
-		}
-		if gratefulUserID != "" {
-			h.postToGratefulChannel(gratefulUserID, event.Channel, event.TimeStamp)
-		}
-	}
 }
 
 // handleSlashCommand handles slash commands
@@ -576,6 +542,44 @@ func (h *SlackHandler) postToGratefulChannel(userID, originalChannel, threadTS s
 
 	// Format the message with proper user tagging and Slack hyperlink format
 	message := fmt.Sprintf("<@%s> received <%s|thanks>!", userID, threadLink)
+
+	// Send to grateful channel
+	h.sendMessage(gratefulChannelID, message)
+}
+
+func (h *SlackHandler) postToGratefulChannelMultiple(userIDs []string, originalChannel, threadTS string) {
+	// Skip if grateful channel is not configured
+	if h.gratefulChannel == "" {
+		return
+	}
+
+	// Skip if no users to mention
+	if len(userIDs) == 0 {
+		return
+	}
+
+	// Get grateful channel ID by name
+	gratefulChannelID, err := h.getChannelIDByName(h.gratefulChannel)
+	if err != nil {
+		log.Printf("Error getting grateful channel ID: %v", err)
+		return
+	}
+
+	// Build the thread link using Slack's permalink format
+	threadLink := fmt.Sprintf("https://slack.com/archives/%s/p%s", originalChannel, strings.Replace(threadTS, ".", "", 1))
+
+	// Build message with all users mentioned
+	var userMentions []string
+	for _, userID := range userIDs {
+		userMentions = append(userMentions, fmt.Sprintf("<@%s>", userID))
+	}
+
+	var message string
+	if len(userIDs) == 1 {
+		message = fmt.Sprintf("%s received <%s|thanks>!", userMentions[0], threadLink)
+	} else {
+		message = fmt.Sprintf("%s received <%s|thanks>!", strings.Join(userMentions, ", "), threadLink)
+	}
 
 	// Send to grateful channel
 	h.sendMessage(gratefulChannelID, message)

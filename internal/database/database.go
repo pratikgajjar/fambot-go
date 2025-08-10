@@ -296,11 +296,11 @@ func (d *Database) GetRandomSassyResponse(category string) (*models.SassyRespons
 
 func (d *Database) insertDefaultSassyResponses() error {
 	responses := []models.SassyResponse{
-		{Response: "Oh, you're being polite now? How refreshing! Here's some karma for good manners. 💫", Category: "thank_you", Active: true},
-		{Response: "Look who remembered their manners! Take some karma, you well-behaved human. ✨", Category: "thank_you", Active: true},
+		{Response: "Oh, you're being polite now? How refreshing!", Category: "thank_you", Active: true},
+		{Response: "Look who remembered their manners!", Category: "thank_you", Active: true},
 		{Response: "Gratitude detected! Don't get used to this generosity though... 😏", Category: "thank_you", Active: true},
-		{Response: "Thank you? In THIS economy? Fine, here's your karma. 💸", Category: "thank_you", Active: true},
-		{Response: "Well well well, someone said thank you. I'm impressed. Have some karma! 🎭", Category: "thank_you", Active: true},
+		{Response: "Thank you? In THIS economy?", Category: "thank_you", Active: true},
+		{Response: "Well well well, someone said thank you. I'm impressed 🎭", Category: "thank_you", Active: true},
 		{Response: "Karma delivered with a side of sass! You're welcome. 💅", Category: "karma_given", Active: true},
 		{Response: "Another karma point hits the bank! Keep spreading those good vibes. 🏦", Category: "karma_given", Active: true},
 		{Response: "Karma level up! Someone's been a good human today. 📈", Category: "karma_given", Active: true},
