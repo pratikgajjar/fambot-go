@@ -306,6 +306,14 @@ func (d *Database) insertDefaultSassyResponses() error {
 		{Response: "Karma level up! Someone's been a good human today. 📈", Category: "karma_given", Active: true},
 		{Response: "Ding! Karma deposited. Your account is looking mighty fine! 💰", Category: "karma_given", Active: true},
 		{Response: "Karma inflation is real, but you earned this one! 📊", Category: "karma_given", Active: true},
+		{Response: "That's nice, but how about showing some love with karma instead? Add ++ after someone's name! 😏", Category: "thank_you_no_karma", Active: true},
+		{Response: "Thanks are cute and all, but karma is cuter! Try @username++ next time 💝", Category: "thank_you_no_karma", Active: true},
+		{Response: "Words are wind, karma is eternal! Show your appreciation with @someone++ 🌪️✨", Category: "thank_you_no_karma", Active: true},
+		{Response: "Thank you detected, but where's the karma? Don't be shy, spread those ++ vibes! 🙈", Category: "thank_you_no_karma", Active: true},
+		{Response: "Appreciation noted! Now let's make it official with some karma points! @user++ 📝", Category: "thank_you_no_karma", Active: true},
+		{Response: "Your gratitude is showing, but your karma game needs work! Try @someone++ 💪", Category: "thank_you_no_karma", Active: true},
+		{Response: "Aww, how sweet! But you know what's sweeter? Actual karma! @username++ 🍯", Category: "thank_you_no_karma", Active: true},
+		{Response: "Thank you is so yesterday. Karma is forever! Level up with @user++ 🚀", Category: "thank_you_no_karma", Active: true},
 	}
 
 	for _, response := range responses {
