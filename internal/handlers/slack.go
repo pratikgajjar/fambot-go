@@ -143,6 +143,8 @@ func (h *SlackHandler) handleAppMention(event *slackevents.AppMentionEvent) {
 
 // handleKarmaIncrements processes karma increment patterns
 func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
+
+
 	matches := karmaRegex.FindAllStringSubmatch(event.Text, -1)
 	var karmaRecipients []string
 
@@ -218,7 +220,7 @@ func (h *SlackHandler) handleKarmaIncrements(event *slackevents.MessageEvent) {
 
 	// Post to grateful channel once for all karma recipients
 	if len(karmaRecipients) > 0 {
-		h.postToGratefulChannelMultiple(karmaRecipients, event.Channel, event.TimeStamp)
+		h.postToGratefulChannelMultiple(karmaRecipients, event.Channel, event.TimeStamp, event.ThreadTimeStamp)
 	}
 }
 
@@ -523,36 +525,9 @@ func (h *SlackHandler) sendThreadedMessage(channel, threadTS, text string) {
 	}
 }
 
-// postToGratefulChannel posts a thread link to the grateful channel
-func (h *SlackHandler) postToGratefulChannel(userID, originalChannel, threadTS string) {
-	// Skip if grateful channel is not configured
-	if h.gratefulChannel == "" {
-		return
-	}
 
-	// Get grateful channel ID by name
-	gratefulChannelID, err := h.getChannelIDByName(h.gratefulChannel)
-	if err != nil {
-		log.Printf("Error getting grateful channel ID: %v", err)
-		return
-	}
 
-	// Skip if the original message came from the grateful channel itself
-	if originalChannel == gratefulChannelID {
-		return
-	}
-
-	// Build the thread link using Slack's permalink format
-	threadLink := fmt.Sprintf("https://slack.com/archives/%s/p%s", originalChannel, strings.Replace(threadTS, ".", "", 1))
-
-	// Format the message with proper user tagging and Slack hyperlink format
-	message := fmt.Sprintf("<@%s> received <%s|thanks>!", userID, threadLink)
-
-	// Send to grateful channel
-	h.sendMessage(gratefulChannelID, message)
-}
-
-func (h *SlackHandler) postToGratefulChannelMultiple(userIDs []string, originalChannel, threadTS string) {
+func (h *SlackHandler) postToGratefulChannelMultiple(userIDs []string, originalChannel, threadTS, parentThreadTS string) {
 	// Skip if grateful channel is not configured
 	if h.gratefulChannel == "" {
 		return
@@ -576,7 +551,18 @@ func (h *SlackHandler) postToGratefulChannelMultiple(userIDs []string, originalC
 	}
 
 	// Build the thread link using Slack's permalink format
-	threadLink := fmt.Sprintf("https://slack.com/archives/%s/p%s", originalChannel, strings.Replace(threadTS, ".", "", 1))
+	var threadLink string
+	if parentThreadTS != "" {
+		// This is a thread message, create thread-specific link
+		threadLink = fmt.Sprintf("https://slack.com/archives/%s/p%s?thread_ts=%s&cid=%s",
+			originalChannel,
+			strings.Replace(threadTS, ".", "", 1),
+			parentThreadTS,
+			originalChannel)
+	} else {
+		// This is a regular channel message
+		threadLink = fmt.Sprintf("https://slack.com/archives/%s/p%s", originalChannel, strings.Replace(threadTS, ".", "", 1))
+	}
 
 	// Build message with all users mentioned
 	var userMentions []string
