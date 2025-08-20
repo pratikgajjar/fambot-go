@@ -537,6 +537,11 @@ func (h *SlackHandler) postToGratefulChannel(userID, originalChannel, threadTS s
 		return
 	}
 
+	// Skip if the original message came from the grateful channel itself
+	if originalChannel == gratefulChannelID {
+		return
+	}
+
 	// Build the thread link using Slack's permalink format
 	threadLink := fmt.Sprintf("https://slack.com/archives/%s/p%s", originalChannel, strings.Replace(threadTS, ".", "", 1))
 
@@ -562,6 +567,11 @@ func (h *SlackHandler) postToGratefulChannelMultiple(userIDs []string, originalC
 	gratefulChannelID, err := h.getChannelIDByName(h.gratefulChannel)
 	if err != nil {
 		log.Printf("Error getting grateful channel ID: %v", err)
+		return
+	}
+
+	// Skip if the original message came from the grateful channel itself
+	if originalChannel == gratefulChannelID {
 		return
 	}
 
